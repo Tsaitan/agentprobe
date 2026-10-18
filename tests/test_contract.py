@@ -113,10 +113,10 @@ def test_is_expiring_soon_uses_today(fixed_today, end_date, expected, explicit_n
         ("cancelled", False),
     ],
 )
-def test_active_contract_within_date_range(active_contract, status, expected):
+def test_active_contract_within_date_range(status, expected):
     # 准备：创建一份有效期为整个十月的合同
-    active_contract.status = status
-    assert active_contract.is_active(on_date=date(2026, 10, 15)) is expected
+    contract = make_contract(status=status)
+    assert contract.is_active(on_date=date(2026, 10, 15)) is expected
 
 
 @pytest.mark.parametrize(
@@ -130,10 +130,6 @@ def test_active_contract_within_date_range(active_contract, status, expected):
     ],
 )
 def test_is_active_date_boundaries(active_contract, on_date, expected):
-    # 这里放上面创建 contract 的代码
-    active_contract.start_date = date(2026, 10, 1)
-    active_contract.end_date = date(2026, 10, 31)
-
     result = active_contract.is_active(on_date=on_date)
 
     assert result is expected
@@ -206,23 +202,16 @@ def test_rejects_invalid_status():
         "expired",
     ],
 )
-def test_is_expiring_soon(
-    active_contract, start_date, end_date, status, days, expected
-):
-    active_contract.start_date = start_date
-    active_contract.end_date = end_date
-    active_contract.status = status
+def test_is_expiring_soon(start_date, end_date, status, days, expected):
+    contract = make_contract(start_date=start_date, end_date=end_date, status=status)
+    result = contract.is_expiring_soon(
+        days=days, on_date=date(2026, 10, 15)
+    )  # 固定基准日为 2026-10-15
 
-    assert (
-        active_contract.is_expiring_soon(days=days, on_date=date(2026, 10, 15))
-        is expected
-    )
+    assert result is expected
 
 
 def test_is_expiring_soon_rejects_negative_days(active_contract):
-    active_contract.start_date = date(2026, 10, 1)
-    active_contract.end_date = date(2026, 10, 31)
-    active_contract.status = "active"
 
     with pytest.raises(ValueError, match="days"):
         active_contract.is_expiring_soon(
