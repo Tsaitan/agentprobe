@@ -4,7 +4,7 @@
 当前阶段：Contract 领域模型与单元测试  
 来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)，并结合本地代码复核。
 
-本文件用于安排后续练习和记录验收，不表示下列改进已实施。业务代码和测试代码本次未修改。
+本文件用于安排后续练习和记录验收，以勾选项记录完成状态。本次已补齐第 4 节加强测试并格式化测试文件，业务模型未修改。
 
 ## 1. 当前已完成的内容
 
@@ -21,14 +21,14 @@
 
 | 检查 | 2026-10-18 复核结果 |
 | --- | --- |
-| Pytest | 23 passed |
+| Pytest | 43 passed（原有 23 条，新增 20 条加强场景） |
 | Ruff 静态检查 | All checks passed |
-| Ruff 格式检查 | 未通过，2 个文件需要格式化 |
+| Ruff 格式检查 | 测试文件已通过；业务模型文件仍待格式化 |
 | 当前本地分支 | `feat/contract-domain` |
 
-需要格式化的文件是 `agentprobe/domain/contract.py` 和 `tests/test_contract.py`。
+仍需格式化的文件是 `agentprobe/domain/contract.py`。`tests/test_contract.py` 已运行格式化并通过单文件格式检查。
 
-以上结果通过本地 `.venv/bin/python -m pytest -q`、`.venv/bin/ruff check .` 和 `.venv/bin/ruff format --check .` 确认。修改代码后应重新检查。
+测试与静态检查结果通过本地 `.venv/bin/python -m pytest -q`、`.venv/bin/ruff check .` 确认；本次测试文件格式通过 `.venv/bin/ruff format --check tests/test_contract.py` 确认。此前全项目格式检查发现业务模型文件也需要格式化，本次未修改该文件。修改代码后应重新检查。
 
 原对话中的“测试通过情况尚未核实”和“Ruff 检查尚未核实”已由本次实际运行更新。远端 PR、合并和 Issue 状态本次未重新查询，不能按旧对话直接认定当前状态。
 
@@ -111,23 +111,40 @@ with pytest.raises(ValueError, match="amount"):
 
 验收：能够解释 Pytest 如何按参数名注入 Fixture；测试可以单独执行，不依赖其他用例的运行顺序。
 
-## 4. 可逐步补充的测试
+## 4. 加强测试（已完成）
 
-主要业务场景已经覆盖，以下为加强项。
+实现位置：`tests/test_contract.py`。所有场景的基准日固定为 2026-10-15，测试结果不依赖真实系统日期。
 
-| 待补场景 | 预期与目的 |
-| --- | --- |
-| `days=1`，明天到期与后天到期 | 分别为 True、False，验证自定义窗口 |
-| `pending`、`expired` 状态且日期满足到期范围 | 均为 False，补齐到期判断中的状态场景 |
-| 不传 `days`，分别剩余 30 和 31 天 | 分别为 True、False，验证默认窗口确实为 30 |
-| `is_active()` 不传 `on_date` 或显式传 None | 使用受控的当天日期判断 |
-| `is_expiring_soon()` 不传 `on_date` 或显式传 None | 使用受控的当天日期判断 |
+| 已补场景 | 输入与预期 | 实现位置 | 新增场景数 |
+| --- | --- | --- | ---: |
+| 自定义一天窗口 | `days=1`，10-16 到期为 True，10-17 到期为 False | `test_is_expiring_soon` 参数表 | 2 |
+| 其他非 active 状态 | `pending`、`expired`，10-20 到期，30 天窗口，均为 False | `test_is_expiring_soon` 参数表 | 2 |
+| 默认窗口 | 不传 `days`，11-14 到期为 True，11-15 到期为 False | `test_is_expiring_soon_defaults_to_30_days` | 2 |
+| 有效性判断的默认日期 | 当天起止为 True，明天开始为 False，昨天结束为 False；每项分别省略 `on_date`、显式传 None | `test_is_active_uses_today` | 6 |
+| 到期判断的默认日期 | 剩余 0/30 天为 True，剩余 31 天和已过期为 False；每项分别省略 `on_date`、显式传 None | `test_is_expiring_soon_uses_today` | 8 |
+| 合计 | 原有 23 条保留，当前 43 条通过 | | 20 |
 
-- [ ] 补充自定义窗口和默认窗口测试。
-- [ ] 补充到期判断中的其他状态。
-- [ ] 学习 `monkeypatch` 后补充默认日期分支。
+- [x] 补充自定义窗口和默认窗口测试。
+- [x] 补充到期判断中的其他状态。
+- [x] 使用 `monkeypatch` 补充默认日期分支。
 
-默认日期测试应替换被测模块 `agentprobe.domain.contract` 中使用的 `date` 名称，让 `today()` 返回固定日期；不要直接修改内置 `date.today`，也不要让固定合同日期依赖真实当天时间。
+### 固定日期的 Fixture 如何工作
+
+`fixed_today` Fixture 创建一个继承 `date` 的 `FixedDate` 类，只重写 `today()`，使它返回固定日期。核心替换语句是：
+
+```python
+monkeypatch.setattr(contract_module, "date", FixedDate)
+```
+
+其中 `contract_module` 是被测模块 `agentprobe.domain.contract`。业务代码在该模块中使用 `date.today()`，所以需要替换它查找 `date` 的位置，而不是直接修改内置 `date.today`。
+
+测试函数参数中声明 `fixed_today` 就会启用替换，不需要手动调用 Fixture。Pytest 会在每条测试结束后自动恢复原值，其他测试不受影响。业务代码无需增加测试专用逻辑。
+
+### 省略参数与显式传 None 分别测试
+
+两个默认日期测试都使用两层参数化：一层是业务场景，另一层是调用方式。`explicit_none=False` 时调用 `contract.is_active()`；为 True 时调用 `contract.is_active(on_date=None)`。到期方法采用相同方式。
+
+默认窗口测试则固定传入 `on_date`，只省略 `days`。这样能够分别验证默认窗口和默认日期，避免混淆失败原因。
 
 可选探索：创建对象后把状态改为 `cancelled`，观察方法返回值变化，理解可变 dataclass。属性修改不会自动重新校验；是否限制属性修改属于后续设计选择，本阶段不要求改成不可变模型。
 
