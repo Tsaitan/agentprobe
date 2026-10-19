@@ -19,3 +19,11 @@ class InMemoryContractRepository:
     def get_by_id(self, contract_id: int) -> Contract | None:
         """根据 ID 查询合同，不存在时返回 None。"""
         return self._contracts.get(contract_id)
+
+    def list_by_customer(self, customer_id: int) -> list[Contract]:
+        """返回指定客户的所有合同，无匹配结果时返回空列表。"""
+        return [
+            contract
+            for contract in self._contracts.values()
+            if contract.customer_id == customer_id
+        ]
