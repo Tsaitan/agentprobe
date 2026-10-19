@@ -15,3 +15,7 @@ class InMemoryContractRepository:
             raise ValueError(f"合同 ID {contract.id} 已存在")
 
         self._contracts[contract.id] = contract
+
+    def get_by_id(self, contract_id: int) -> Contract | None:
+        """根据 ID 查询合同，不存在时返回 None。"""
+        return self._contracts.get(contract_id)
