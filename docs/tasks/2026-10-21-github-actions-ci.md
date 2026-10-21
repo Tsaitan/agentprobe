@@ -116,11 +116,16 @@ CI 中使用格式检查命令，不使用会修改文件的 `ruff format .`。�
 - [x] 已从最新 `main` 创建并切换到 `chore/add-github-actions-ci`。
 - [x] 新增 `.github/workflows/ci.yml`，配置触发器、运行环境、锁定依赖安装及三项检查。
 - [x] YAML 解析及本地配置检查通过，依赖同步与三项检查全部通过。
-- [ ] 下一步：提交并推送 CI 分支，创建关联 Issue #5 的 PR，确认 GitHub Checks。
+- [x] 工作流和任务文档已在本地提交，提交为 `3acca29`。
+- [x] 更新令牌权限后，CI 分支推送成功。
+- [x] 创建 [PR #6：添加 Pytest 和 Ruff 的 GitHub Actions 自动检查](https://github.com/Tsaitan/agentprobe/pull/6)，通过 `Closes #5` 关联 Issue。
+- [x] GitHub Actions 首次 PR 检查通过：[CI #1](https://github.com/Tsaitan/agentprobe/actions/runs/39628775386)，对应工作流提交 `3acca29`。
 
 本地验证记录：`uv sync --locked --dev` 成功；`uv run python -m pytest -v` 为 50 passed；`uv run ruff check .` 通过；`uv run ruff format --check .` 为 12 files already formatted。
 
-已完成工作流配置和本地验证，尚未提交、推送或创建 PR。YAML 解析和本地检查不替代 GitHub Ubuntu runner 上的实际运行结果。
+已完成工作流配置、本地验证、分支推送和 PR 创建。GitHub 托管 Ubuntu runner 上的依赖安装、Pytest、Ruff 静态检查及格式检查均成功。PR 保持打开，合并和合并后的 Push 工作流验证尚未进行。
+
+权限问题已解决：首次推送曾因认证令牌缺少 `workflow` 权限而被 GitHub 拒绝，更新令牌后重试成功。此权限属于 Git 认证令牌，与 `ci.yml` 中控制运行时令牌的 `permissions` 配置不同，无需修改工作流来解决。
 
 ### 操作步骤
 
@@ -191,13 +196,13 @@ git diff --check
 
 - [x] 已有对应 Issue #5 和 CI 功能分支 `chore/add-github-actions-ci`。
 - [x] 新增 `.github/workflows/ci.yml`。
-- [x] 已配置 Push 到 `main` 和以 `main` 为目标的 PR 触发器，实际触发待远端验证。
+- [x] 已配置 Push 到 `main` 和以 `main` 为目标的 PR 触发器，PR 触发已验证，main Push 待合并后验证。
 - [x] 已配置 `ubuntu-latest` 和 Python 3.12。
 - [x] 已配置 uv 及锁文件安装项目和开发依赖。
 - [x] 已配置运行全部 Pytest 测试的步骤。
 - [x] 已配置 Ruff 静态检查和格式检查步骤。
 - [x] 本地依赖同步、50 条测试和 Ruff 检查通过。
-- [ ] PR 对应的 GitHub Checks 实际通过，并在描述中记录结果。
+- [x] PR 对应的 GitHub Checks 实际通过，运行结果见 PR 描述和上述 Actions 链接。
 - [ ] 合并后确认 `main` 的 Push 工作流运行情况。
 
 新增工作流本身不要求新增业务测试；现有 50 条测试作为本次验证基线。
