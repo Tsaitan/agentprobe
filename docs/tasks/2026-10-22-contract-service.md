@@ -4,7 +4,7 @@
 
 当前阶段：v0.1，Python 工程基础。预计投入：120 分钟。
 
-来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。Issue、分支、文件及依赖注入构造函数已就绪，三个业务方法和测试场景待实现。
+来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。Issue、分支、文件及依赖注入构造函数已就绪，已实现 get_contract()，两个列表查询方法和测试场景待实现。
 
 ## 1. 前置进度
 
@@ -56,7 +56,7 @@ tests/
 
 已有 Domain、Repository 和相关测试保持可用，不需要为本次任务引入新框架。
 
-当前进度：上述三个文件已创建，`ContractService.__init__()` 已接收并保存外部仓储；测试文件目前只有说明，尚未新增 Service 测试用例。下一步实现 `get_contract()`。
+当前进度：上述三个文件已创建，`ContractService.__init__()` 已接收并保存外部仓储，`get_contract()` 已调用仓储的 `get_by_id()`；测试文件目前只有说明，尚未新增 Service 测试用例。下一步实现 `list_customer_contracts()`。
 
 ## 4. 构造函数与依赖注入
 
@@ -214,7 +214,8 @@ git push -u origin feat/contract-service
 
 - [x] 新增约定的 services 包、实现文件和测试文件。
 - [x] 通过构造函数注入仓储实例。
-- [ ] 实现 get_contract() 和 list_customer_contracts()。
+- [x] 实现 get_contract()。
+- [ ] 实现 list_customer_contracts()。
 - [ ] 实现 list_expiring_contracts()，复用 Domain 的到期判断。
 - [ ] 负数 days 在有数据和无数据时均抛出 ValueError。
 - [ ] 查询不修改原合同或仓储数据。
