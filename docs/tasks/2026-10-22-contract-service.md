@@ -4,7 +4,7 @@
 
 当前阶段：v0.1，Python 工程基础。预计投入：120 分钟。
 
-来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。Issue、分支、文件及依赖注入构造函数已就绪，三个业务方法已实现，Service 测试场景待编写。
+来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。三个业务方法、Service 测试 Fixture 和两条按 ID 查询用例已完成，其余测试场景待编写。
 
 ## 1. 前置进度
 
@@ -14,6 +14,7 @@
 - InMemoryContractRepository，包含添加、按合同 ID 查询、按客户 ID 查询。
 - GitHub Actions CI，运行 Pytest、Ruff 静态检查和格式检查。
 - 2026-10-22 实现三个 Service 方法后，原有 50 条测试保持通过。
+- 新增两条 Service 查询测试后，全量测试为 52 passed，Ruff 静态和全项目格式检查通过。
 - 临时执行检查已验证到期边界、客户和有效性筛选、负数窗口及合同字段未被修改；这些临时检查尚未保存为 Service 单元测试。
 
 引用对话记录 PR #6 已合并、Issue #5 已关闭，main 的 CI 成功。以上远端状态本次未重新查询，不能把引用记录当作本次实时验证结果。开始开发前应同步最新 main。
@@ -57,7 +58,7 @@ tests/
 
 已有 Domain、Repository 和相关测试保持可用，不需要为本次任务引入新框架。
 
-当前进度：上述三个文件已创建，构造函数和三个业务方法已实现。到期查询先校验 days，一次确定基准日期，再通过仓储获取合同并调用 Domain 判断。测试文件目前只有说明，尚未新增 Service 测试用例。下一步编写 Service 的 Fixture 和查询测试。
+当前进度：构造函数和三个业务方法已实现。到期查询先校验 days，一次确定基准日期，再通过仓储获取合同并调用 Domain 判断。测试已新增 repository、service、contract 三个函数作用域 Fixture，以及查询存在和不存在合同的两条用例。下一步编写客户全部合同查询用例。
 
 ## 4. 构造函数与依赖注入
 
@@ -149,6 +150,8 @@ def list_expiring_contracts(
 | TC11 | 客户没有合同时传 days=-1 | 仍抛出 ValueError，防止遗漏入口校验 |
 | TC12 | 调用到期查询前后比较合同字段及仓储内容 | 原合同和仓储数据不变 |
 
+执行进度：TC01、TC02 已保存为正式测试并通过；TC03 至 TC12 待补。Service Fixture 接收 repository Fixture，因此测试向仓储添加数据后，Service 能查询到同一个仓储中的数据。
+
 可选增强：覆盖 `days=0`、自定义窗口、已过期、未开始、pending/expired 状态，以及默认日期分支。默认日期测试可复用已经学习的 `monkeypatch` 思路，替换实际读取当天日期的模块名称。
 
 ### 测试组织建议
@@ -218,7 +221,7 @@ git push -u origin feat/contract-service
 - [x] 负数 days 在有数据和无数据时均抛出 ValueError，临时执行验证通过。
 - [x] 查询不修改原合同或仓储数据，字段快照对比验证通过；持久化回归测试待补。
 - [ ] 至少 8 个 Service 测试实例通过，关键边界已覆盖。
-- [x] 原有 50 条测试保持通过，当前全量测试通过；新增 Service 测试后需重跑。
+- [x] 原有 50 条测试与新增 2 条 Service 测试全部通过，当前全量 52 passed；后续新增后需重跑。
 - [x] 当前 Ruff 静态和全项目格式检查通过；后续修改后需重跑。
 - [ ] PR 对应的最新 GitHub Actions 检查通过。
 - [ ] 完成 Code Review 后，再按项目流程合并和核对 Issue。
