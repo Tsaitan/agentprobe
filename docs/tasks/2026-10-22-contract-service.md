@@ -4,7 +4,7 @@
 
 当前阶段：v0.1，Python 工程基础。预计投入：120 分钟。
 
-来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。三个业务方法、Service 测试 Fixture 和十四个测试实例已完成，计划中的十二类测试场景均已覆盖，待代码审查和 PR 验证。
+来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文按引用对话中的完整要求整理。三个业务方法、十四个 Service 测试实例及本次代码审查已完成，PR 的 GitHub CI 已通过，尚未合并。
 
 ## 1. 前置进度
 
@@ -16,6 +16,8 @@
 - 2026-10-22 实现三个 Service 方法后，原有 50 条测试保持通过。
 - 新增十四个 Service 测试实例后，全量测试为 64 passed，Ruff 静态和全项目格式检查通过。
 - 到期边界、客户和有效性筛选、负数窗口及查询不修改数据等计划场景，现已保存为正式 Service 测试。
+- 已创建 [PR #8](https://github.com/Tsaitan/agentprobe/pull/8)，通过 `Closes #7` 关联任务。
+- GitHub [CI 运行 #4](https://github.com/Tsaitan/agentprobe/actions/runs/39806816599) 对工作流提交 `f659286` 实际验证成功：Ubuntu / Python 3.12.11，64 passed，Ruff 静态和格式检查通过。
 
 引用对话记录 PR #6 已合并、Issue #5 已关闭，main 的 CI 成功。以上远端状态本次未重新查询，不能把引用记录当作本次实时验证结果。开始开发前应同步最新 main。
 
@@ -58,7 +60,7 @@ tests/
 
 已有 Domain、Repository 和相关测试保持可用，不需要为本次任务引入新框架。
 
-当前进度：构造函数和三个业务方法已实现。Service 测试合计十四个实例，计划场景已覆盖。最后新增的测试通过 asdict() 保存独立字段快照，查询后检查原对象、按 ID 查询结果及两个客户的合同集合，确认未被修改。下一步代码审查、同步 Issue 进度，并提交 PR 验证 CI。
+当前进度：构造函数和三个业务方法已实现，十四个 Service 测试实例覆盖计划场景。本次代码审查未发现阻碍当前验收的问题。PR #8 已创建，远端 CI 已通过；下一步由用户审阅 PR，并在确认合并后验证 main 的 CI。
 
 ## 4. 构造函数与依赖注入
 
@@ -226,8 +228,9 @@ git push -u origin feat/contract-service
 - [x] 补齐不修改数据的正式测试。
 - [x] 原有 50 条测试与新增 14 个 Service 测试实例全部通过，当前全量 64 passed；后续修改后需重跑。
 - [x] 当前 Ruff 静态和全项目格式检查通过；后续修改后需重跑。
-- [ ] PR 对应的最新 GitHub Actions 检查通过。
-- [ ] 完成 Code Review 后，再按项目流程合并和核对 Issue。
+- [x] PR #8 的代码提交 `f659286` 已通过实际 GitHub Actions 检查；新增提交后继续确认最新结果。
+- [x] 本次代码审查完成，未发现阻碍当前验收的问题。
+- [ ] 用户审阅并决定合并，之后核对 Issue 自动关闭及 main CI。
 
 检查命令：
 
@@ -238,7 +241,7 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-50 条原有测试加上 14 个新增 Service 测试实例，当前实际全量结果为 64 passed。计划场景与本地检查均已完成；远端 Issue 勾选、PR 的实际 CI 和代码审查仍需另行核对，不能据此直接判定整个 Issue 已验收。
+50 条原有测试加上 14 个新增 Service 测试实例，GitHub 实际全量结果为 64 passed。计划场景、本地检查、本次代码审查和 PR CI 均已完成；PR 保持打开，合并后的 Issue 状态和 main CI 仍待核对。
 
 ## 10. 今日范围与下一阶段
 
