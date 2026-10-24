@@ -1,5 +1,6 @@
 """使用 Mock 仓储隔离验证合同服务的返回结果和调用行为。"""
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock
@@ -56,3 +57,19 @@ def test_get_contract_returns_none_when_repository_returns_none(
 
     assert result is None
     mock_repository.get_by_id.assert_called_once_with(9999)
+
+
+def test_list_customer_contracts_returns_mocked_contracts(
+    service, mock_repository, contract
+):
+    """Mock 返回客户全部合同：Service 保留不同状态和日期，并按客户 ID 查询一次。"""
+    contracts = [
+        contract,
+        replace(contract, id=1002, status="cancelled", end_date=date(2026, 10, 10)),
+    ]
+    mock_repository.list_by_customer.return_value = contracts
+
+    result = service.list_customer_contracts(101)
+
+    assert result == contracts
+    mock_repository.list_by_customer.assert_called_once_with(101)
