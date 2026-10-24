@@ -4,7 +4,7 @@
 
 当前阶段：v0.1，Python 工程基础。预计投入：120 分钟。
 
-来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文根据 10 月 24 日的完整任务整理，延续 10 月 23 日的学习目标。Issue #9、开发分支和 Protocol 已创建，下一步修改 Service 的依赖类型。
+来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文根据 10 月 24 日的完整任务整理，延续 10 月 23 日的学习目标。Protocol 与 Service 依赖类型调整已完成，下一步建立 Mock 测试 Fixture 和首条隔离测试。
 
 ## 1. 当前进度与起点
 
@@ -14,19 +14,21 @@
 | --- | --- |
 | 当前分支 | `refactor/contract-repository-protocol` |
 | 开发基线 | `218f982`，已同步 origin/main |
-| 工作区 | 任务文档保留，新增 Protocol 文件待提交 |
-| ContractService | 已有三个业务方法，构造函数依赖具体内存仓储 |
+| 当前改动 | Service 类型调整及任务文档更新 |
+| ContractService | 构造函数已依赖 ContractRepository Protocol |
 | ContractRepository Protocol | 已声明两个读取方法 |
 | Service Mock 测试 | 未发现对应文件 |
-| 最近已验证的测试基线 | 64 条，其中真实仓储的 Service 测试为 14 个实例 |
+| 当前测试结果 | 64 passed，其中真实仓储的 Service 测试为 14 个实例 |
 
-已通过 git fetch 更新远端分支信息，将本地 main 快进到 `218f982`，并从该基线创建开发分支。引用对话记录的 PR #8、Issue #7 及 main CI 状态本次未逐项查询；本次未重跑已有测试。
+已通过 git fetch 更新远端分支信息，将本地 main 快进到 `218f982`，并从该基线创建开发分支。引用对话记录的 PR #8、Issue #7 及 main CI 状态本次未逐项查询。
+
+Service 类型调整后，全量测试 64 passed；Ruff 静态和格式检查通过。mypy 验证 `repository: ContractRepository = InMemoryContractRepository()` 以及将其传给 ContractService 均无类型错误，确认内存仓储结构符合协议要求。
 
 今天延续尚未实现的 Protocol 和 Mock 任务，不推进 FastAPI。
 
 ## 2. 今天要解决的问题
 
-当前 Service 虽然接收外部传入的 Repository，但类型注解仍写为 `InMemoryContractRepository`。
+改造前 Service 虽然接收外部传入的 Repository，但类型注解写为 `InMemoryContractRepository`；目前已改为 `ContractRepository`。
 
 目标是让它依赖仓储具备的能力，而不是某一种存储实现：
 
@@ -91,10 +93,10 @@ def __init__(self, repository: ContractRepository) -> None:
     self.repository = repository
 ```
 
-- [ ] 将 Service 中具体仓储的 import 替换为 Protocol 的 import。
-- [ ] 不再用具体内存仓储作为构造参数类型。
-- [ ] 保持三个业务方法及其行为不变。
-- [ ] 现有真实仓储仍可传入 Service，原有 14 个 Service 测试保持通过。
+- [x] 将 Service 中具体仓储的 import 替换为 Protocol 的 import。
+- [x] 不再用具体内存仓储作为构造参数类型。
+- [x] 保持三个业务方法及其行为不变。
+- [x] 现有真实仓储仍可传入 Service，原有 14 个 Service 测试保持通过。
 
 这一步改变的是依赖声明。现有内存仓储已经有两个符合要求的方法，不需要为了满足协议新增业务代码。
 
@@ -222,13 +224,13 @@ uv run ruff format --check .
 | 20 分钟 | 检查、提交、创建 PR | 本地验证与 GitHub CI |
 
 - [x] 定义仅含两个读取方法的 ContractRepository Protocol。
-- [ ] ContractService 改为依赖 Protocol，移除具体仓储类型依赖。
-- [ ] 内存仓储无须显式继承 Protocol，原有真实仓储测试继续有效。
+- [x] ContractService 改为依赖 Protocol，移除具体仓储类型依赖。
+- [x] 内存仓储无须显式继承 Protocol，原有真实仓储测试继续有效。
 - [ ] 至少六个 Mock 测试实例通过。
 - [ ] 结果、调用次数和参数均有断言。
 - [ ] 负数 days 抛出异常，且不触发仓储查询。
-- [ ] 原有 64 条测试保持通过，全量测试通过。
-- [ ] Ruff 静态与格式检查通过。
+- [x] 原有 64 条测试保持通过，当前全量 64 passed；新增 Mock 测试后需重跑。
+- [x] 当前 Ruff 静态与格式检查通过；后续修改后需重跑。
 - [ ] 创建 PR 并确认最新 GitHub Actions 结果。
 - [ ] 完成 Code Review 后，再按项目流程合并和核对 Issue。
 

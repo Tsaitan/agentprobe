@@ -3,15 +3,13 @@
 from datetime import date
 
 from agentprobe.domain.contract import Contract
-from agentprobe.repositories.memory_contract_repository import (
-    InMemoryContractRepository,
-)
+from agentprobe.repositories.protocol import ContractRepository
 
 
 class ContractService:
     """使用外部传入的仓储组织合同业务操作。"""
 
-    def __init__(self, repository: InMemoryContractRepository) -> None:
+    def __init__(self, repository: ContractRepository) -> None:
         self.repository = repository
 
     def get_contract(self, contract_id: int) -> Contract | None:
