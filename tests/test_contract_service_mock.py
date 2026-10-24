@@ -44,3 +44,15 @@ def test_get_contract_returns_mocked_contract(service, mock_repository, contract
 
     assert result == contract
     mock_repository.get_by_id.assert_called_once_with(1001)
+
+
+def test_get_contract_returns_none_when_repository_returns_none(
+    service, mock_repository
+):
+    """Mock 查询无结果：Service 返回 None，并按指定 ID 查询仓储一次。"""
+    mock_repository.get_by_id.return_value = None
+
+    result = service.get_contract(9999)
+
+    assert result is None
+    mock_repository.get_by_id.assert_called_once_with(9999)
