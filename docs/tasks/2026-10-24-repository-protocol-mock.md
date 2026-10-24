@@ -4,7 +4,7 @@
 
 当前阶段：v0.1，Python 工程基础。预计投入：120 分钟。
 
-来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文根据 10 月 24 日的完整任务整理，延续 10 月 23 日的学习目标。Protocol、Service 类型调整及四条 Mock 测试已完成，下一步验证仓储返回空列表的场景。
+来源：[AgentProbe 每日开发任务](chatgpt-conversation://6ad30ce1-7ba8-83ec-9777-b00b105890ce)。本文根据 10 月 24 日的完整任务整理，延续 10 月 23 日的学习目标。Protocol、Service 类型调整及六条核心 Mock 测试已完成，下一步代码审查并准备 PR 验证。
 
 最近验证日期：2026-10-25。
 
@@ -19,14 +19,14 @@
 | 本阶段实现 | Protocol、Service 类型调整、Mock Fixture 和首条隔离测试 |
 | ContractService | 构造函数已依赖 ContractRepository Protocol |
 | ContractRepository Protocol | 已声明两个读取方法 |
-| Service Mock 测试 | 已创建测试文件，TC01 至 TC04 通过 |
-| 当前测试结果 | 68 passed，包含原有 64 条和 4 条新增 Mock 测试 |
+| Service Mock 测试 | 已创建测试文件，TC01 至 TC06 全部通过 |
+| 当前测试结果 | 70 passed，包含原有 64 条和 6 条新增 Mock 测试 |
 
 已通过 git fetch 更新远端分支信息，将本地 main 快进到 `218f982`，并从该基线创建开发分支。引用对话记录的 PR #8、Issue #7 及 main CI 状态本次未逐项查询。
 
 Service 类型调整后，全量测试 64 passed；Ruff 静态和格式检查通过。mypy 验证 `repository: ContractRepository = InMemoryContractRepository()` 以及将其传给 ContractService 均无类型错误，确认内存仓储结构符合协议要求。
 
-2026-10-25 新增四条 Mock 测试后，全量测试为 68 passed，Ruff 静态及全项目格式检查通过。
+2026-10-25 新增六条 Mock 测试后，全量测试为 70 passed，Ruff 静态及全项目格式检查通过。
 
 今天延续尚未实现的 Protocol 和 Mock 任务，不推进 FastAPI。
 
@@ -112,7 +112,7 @@ def __init__(self, repository: ContractRepository) -> None:
 - `service`：接收该 Mock 并传给 ContractService。
 - 合同数据：继续使用真实 Contract，可用 Fixture 或 `replace()` 构造不同场景。
 
-当前进度：三个 Fixture 已创建；TC01、TC02 验证按 ID 查询；TC03 验证客户全部合同查询；TC04 使用七份同客户真实合同，验证当天到期、窗口内和 30 天边界被包含，31 天、已取消、已过期及未开始被排除。四条用例均断言仓储调用次数和参数，未创建真实内存仓储。
+当前进度：三个 Fixture 和六条核心 Mock 用例均已完成。TC01 至 TC05 验证查询结果、调用次数和参数；TC06 验证负数 days 抛出 ValueError，且 list_by_customer()、get_by_id() 都未调用。Mock 文件中不创建真实内存仓储，原有真实仓储测试继续保留。
 
 核心用法示例：
 
@@ -149,7 +149,7 @@ mock_repository.get_by_id.assert_called_once_with(1001)
 | TC05 | list_by_customer 返回空列表，执行到期查询 | 返回 [] | list_by_customer 恰好调用一次，参数为 101 |
 | TC06 | days=-1，调用到期查询 | 抛出 ValueError，消息包含 days | list_by_customer 没有被调用 |
 
-完成状态：TC01 至 TC04 已通过，TC05、TC06 待编写。
+完成状态：TC01 至 TC06 全部通过。第 8 节仍为可选增强，不影响六个核心场景已完成的判断。
 
 TC04 可以包含当天到期、窗口内、30 天边界、31 天、已取消等数据。Mock 的列表模拟仓储已按客户筛选的返回结果，Service 负责复用 Domain 的有效性和到期规则。
 
@@ -219,7 +219,7 @@ uv run ruff format --check .
 
 确认通过后，提交相关实现、测试及任务文档，推送分支并创建 PR。PR 使用 `Closes #9` 关联 Issue，记录实际验证结果，确认最新 GitHub CI 通过后进入代码审查。
 
-64 条原有测试加至少 6 个新测试实例，目标是至少 70 条通过；这是计划数量，不是当前执行结果。可选增强完成后数量可以增加。
+64 条原有测试加 6 个新 Mock 测试实例，当前实际全量为 70 passed。核心数量与场景目标已达到；可选增强尚未实施，远端 PR 和 CI 仍需验证。
 
 ## 10. 时间安排与验收清单
 
@@ -234,10 +234,10 @@ uv run ruff format --check .
 - [x] 定义仅含两个读取方法的 ContractRepository Protocol。
 - [x] ContractService 改为依赖 Protocol，移除具体仓储类型依赖。
 - [x] 内存仓储无须显式继承 Protocol，原有真实仓储测试继续有效。
-- [ ] 至少六个 Mock 测试实例通过，目前完成 4 个。
-- [ ] 结果、调用次数和参数均有断言。
-- [ ] 负数 days 抛出异常，且不触发仓储查询。
-- [x] 原有 64 条及新增 4 条 Mock 测试通过，当前全量 68 passed；后续新增后需重跑。
+- [x] 六个核心 Mock 测试实例通过。
+- [x] 查询结果、调用次数和参数均有断言。
+- [x] 负数 days 抛出异常，且不触发两个仓储查询方法。
+- [x] 原有 64 条及新增 6 条 Mock 测试通过，当前全量 70 passed；后续修改后需重跑。
 - [x] 当前 Ruff 静态与格式检查通过；后续修改后需重跑。
 - [ ] 创建 PR 并确认最新 GitHub Actions 结果。
 - [ ] 完成 Code Review 后，再按项目流程合并和核对 Issue。

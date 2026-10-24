@@ -99,3 +99,34 @@ def test_list_expiring_contracts_filters_mocked_contracts(
     assert len(result) == 3
     assert {item.id for item in result} == {1001, 1002, 1003}
     mock_repository.list_by_customer.assert_called_once_with(101)
+
+
+def test_list_expiring_contracts_returns_empty_when_repository_returns_empty(
+    service, mock_repository
+):
+    """Mock 返回空列表：到期查询返回空列表，并按客户 ID 查询仓储一次。"""
+    mock_repository.list_by_customer.return_value = []
+
+    result = service.list_expiring_contracts(
+        customer_id=101,
+        days=30,
+        on_date=date(2026, 10, 24),
+    )
+
+    assert result == []
+    mock_repository.list_by_customer.assert_called_once_with(101)
+
+
+def test_list_expiring_contracts_rejects_negative_days_without_repository_access(
+    service, mock_repository
+):
+    """负数窗口：抛出 ValueError，且不调用任何仓储查询方法。"""
+    with pytest.raises(ValueError, match="days"):
+        service.list_expiring_contracts(
+            customer_id=101,
+            days=-1,
+            on_date=date(2026, 10, 24),
+        )
+
+    mock_repository.list_by_customer.assert_not_called()
+    mock_repository.get_by_id.assert_not_called()
