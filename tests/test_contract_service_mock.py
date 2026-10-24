@@ -73,3 +73,29 @@ def test_list_customer_contracts_returns_mocked_contracts(
 
     assert result == contracts
     mock_repository.list_by_customer.assert_called_once_with(101)
+
+
+def test_list_expiring_contracts_filters_mocked_contracts(
+    service, mock_repository, contract
+):
+    """Mock 返回混合合同：仅保留窗口内有效合同，并按客户 ID 查询仓储一次。"""
+    contracts = [
+        contract,  # 7 天后到期
+        replace(contract, id=1002, end_date=date(2026, 10, 24)),  # 当天到期
+        replace(contract, id=1003, end_date=date(2026, 11, 23)),  # 30 天后到期
+        replace(contract, id=1004, end_date=date(2026, 11, 24)),  # 超出窗口
+        replace(contract, id=1005, status="cancelled"),  # 日期在窗口内，但已取消
+        replace(contract, id=1006, end_date=date(2026, 10, 23)),  # 已过期
+        replace(contract, id=1007, start_date=date(2026, 10, 25)),  # 未开始
+    ]
+    mock_repository.list_by_customer.return_value = contracts
+
+    result = service.list_expiring_contracts(
+        customer_id=101,
+        days=30,
+        on_date=date(2026, 10, 24),
+    )
+
+    assert len(result) == 3
+    assert {item.id for item in result} == {1001, 1002, 1003}
+    mock_repository.list_by_customer.assert_called_once_with(101)
