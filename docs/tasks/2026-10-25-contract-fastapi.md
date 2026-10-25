@@ -4,7 +4,7 @@
 
 当前阶段：v0.2，AI Agent 全栈后端开发。预计投入：120 分钟。
 
-来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。Issue #11、分支、应用工厂和健康检查已就绪；下一步定义 ContractRead 响应模型。
+来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。Issue #11、分支、应用工厂、健康检查和 ContractRead 响应模型已就绪；下一步实现合同查询路由。
 
 ## 1. 前置进度与当前起点
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | 当前分支 | `feat/contract-fastapi` |
 | 开发基线 | `e8e5461`，已核对与 origin/main 一致 |
-| 当前阶段 | API 文件已创建，响应模型、合同路由和正式测试待补 |
+| 当前阶段 | ContractRead 已定义，合同路由和正式测试待补 |
 | FastAPI API 包 | 已有 create_app()、模块级 app 和 /health |
 | 根目录 main.py | 仍为初始化示例 |
 | 已声明的相关依赖 | FastAPI、HTTPX、Pydantic Settings、Uvicorn |
@@ -30,7 +30,9 @@
 
 应用工厂创建时装配一次 ContractService，保存在 app.state.contract_service。临时 TestClient 检查已确认 /health 返回 200 和约定 JSON，/docs、/openapi.json 返回 200，OpenAPI 包含 /health；外部仓储按原实例注入，不同默认应用的仓储相互独立。
 
-上述检查尚未保存为正式 API 测试，tests/test_contract_api.py 和 schemas.py 目前仅有说明。检查过程中出现当前 Starlette 对 HTTPX TestClient 的弃用提示，检查结果仍通过；本步未调整依赖。
+上述检查尚未保存为正式 API 测试，tests/test_contract_api.py 目前仅有说明。检查过程中出现当前 Starlette 对 HTTPX TestClient 的弃用提示，检查结果仍通过；本步未调整依赖。
+
+ContractRead 已在 schemas.py 中定义七个字段，并配置 from_attributes=True。临时检查已确认可通过 model_validate(contract) 从领域对象读取字段；Python 模型中金额、日期保留 Decimal 和 date 类型，model_dump(mode="json") 与 model_dump_json() 均输出完整约定字段，金额为 "50000.00"，日期为 ISO 字符串。响应模型文件的 Ruff 静态和格式检查通过。本步未新增正式测试、未重新运行原有测试，尚未将模型接入路由。
 
 ## 2. 今天的业务目标与分层
 
@@ -270,7 +272,7 @@ uv run ruff format --check .
 
 ## 10. 验收清单与范围
 
-- [x] 新增 API 包和约定文件，响应模型和测试内容待补。
+- [x] 新增 API 包和约定文件，正式测试内容待补。
 - [x] create_app() 支持独立仓储注入，同一应用复用仓储，临时检查通过。
 - [x] /docs、/openapi.json 通过 TestClient 检查，健康检查已出现在文档定义中。
 - [ ] 实际启动 Uvicorn 并通过浏览器验证，补全合同路由后核对业务接口文档。
@@ -278,7 +280,8 @@ uv run ruff format --check .
 - [ ] 存在的合同返回 200 和完整正确的响应。
 - [ ] 不存在的合同返回 404。
 - [ ] 非法合同 ID 返回 422，正整数约束有效。
-- [ ] 使用 ContractRead 响应模型，金额和日期序列化符合约定。
+- [x] 定义 ContractRead，临时验证从领域对象读取字段及金额、日期序列化。
+- [ ] 在合同路由中使用 ContractRead 响应模型，验证 HTTP JSON 响应。
 - [ ] 路由通过 Depends 注入 Service，并调用 Service 查询。
 - [ ] 至少五个 HTTP API 测试通过，数据独立。
 - [ ] 原有 70 条测试保持通过，全量测试通过。
