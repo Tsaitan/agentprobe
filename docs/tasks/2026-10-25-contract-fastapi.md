@@ -4,7 +4,7 @@
 
 当前阶段：v0.2，AI Agent 全栈后端开发。预计投入：120 分钟。
 
-来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。应用工厂、健康检查、ContractRead、合同查询路由及六个 HTTP 测试实例已完成，本地全量 76 条测试通过；2026-10-27 已完成实际启动、Swagger 浏览器验证及本地代码审查，创建 PR 和最新 PR CI 待完成。
+来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。应用工厂、健康检查、ContractRead、合同查询路由及六个 HTTP 测试实例已完成，本地全量 76 条测试通过；2026-10-27 已完成实际启动、Swagger 浏览器验证、本地代码审查，并创建 PR #12，GitHub Actions 检查通过，等待用户审阅合并。
 
 ## 1. 前置进度与当前起点
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | 当前分支 | `feat/contract-fastapi` |
 | 开发基线 | `e8e5461`，已核对与 origin/main 一致 |
-| 当前阶段 | 本地检查与真实服务的 Swagger 浏览器验证完成 |
+| 当前阶段 | PR #12 已创建，CI 检查通过，等待审阅合并 |
 | FastAPI API 包 | 已有 create_app()、模块级 app、/health 和 /contracts/{contract_id} |
 | 根目录 main.py | 仍为初始化示例 |
 | 已声明的相关依赖 | FastAPI、HTTPX、Pydantic Settings、Uvicorn |
@@ -73,7 +73,21 @@ ContractRead 已在 schemas.py 中定义七个字段，并配置 from_attributes
 
 另一个可选文档改进是显式声明 404 响应描述，避免 Swagger 将实际 404 标记为 Undocumented；当前 404 的状态和 JSON 正确，不属于本 Issue 的必需修复项。
 
-当前功能分支尚无 PR。现有 CI 仅在 main Push 或针对 main 的 Pull Request 时触发，因此功能分支已推送不代表 PR CI 已完成。下一步提交本地验证与审查文档，创建关联 Issue #11 的 PR，再核对该 PR 最新提交的检查结果。
+现有 CI 仅在 main Push 或针对 main 的 Pull Request 时触发，因此功能分支已推送不代表 PR CI 已完成。本地验证与审查文档已通过 e7459d4 提交并推送，随后创建了关联 Issue #11 的 PR #12，检查结果见下文。
+
+### 2026-10-27 PR 与 GitHub Actions 验收
+
+已创建 [PR #12：使用 FastAPI 实现合同查询 HTTP API](https://github.com/Tsaitan/agentprobe/pull/12)，从 feat/contract-fastapi 合入 main，描述使用 Closes #11 关联任务。PR 目前为 open，尚未合并，Issue #11 保持 open。
+
+首轮已完成的 [CI #10](https://github.com/Tsaitan/agentprobe/actions/runs/40521948773) 对应提交 e7459d4。已读取实际运行步骤和日志：
+
+- Ubuntu 运行环境，Python 3.12.11，依赖锁定安装成功。
+- Pytest：76 passed，1 条已知 TestClient 弃用提示。
+- Ruff 静态检查：All checks passed。
+- Ruff 格式检查：24 files already formatted。
+- 作业与所有检查步骤均为 success。
+
+本文保存首次 PR CI 的验收记录；之后的文档提交会再次触发 CI，最终应以 PR 页面最新提交的检查结果为准。三个未补充的可选测试仍保持未勾选。合并后由 Closes #11 自动关闭 Issue，不提前手动关闭。
 
 ## 2. 今天的业务目标与分层
 
@@ -328,7 +342,8 @@ uv run ruff format --check .
 - [x] 原有 70 条测试保持通过，全量 76 条测试通过。
 - [x] Ruff 静态和格式检查通过。
 - [x] 本地代码审查完成，未发现阻碍提交 PR 的功能问题。
-- [ ] 创建 PR，并确认最新 GitHub Actions 检查通过。
+- [x] 创建 PR #12，并确认 GitHub Actions 检查通过。
+- [ ] 用户审阅并合并 PR，随后确认 main 分支 CI。
 
 今天不实现客户合同列表、到期查询 API、数据库、鉴权、前端或 AI Agent。时间不足时优先完成应用启动、合同查询和 200/404 测试，未完成项如实记录。
 
