@@ -4,7 +4,7 @@
 
 当前阶段：v0.2，AI Agent 全栈后端开发。预计投入：120 分钟。
 
-来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。应用工厂、健康检查、ContractRead、合同查询路由及六个 HTTP 测试实例已完成，本地全量 76 条测试通过；实际启动、浏览器验证和 PR CI 待完成。
+来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。本文依据引用对话的完整任务整理。应用工厂、健康检查、ContractRead、合同查询路由及六个 HTTP 测试实例已完成，本地全量 76 条测试通过；2026-10-27 已完成实际启动、Swagger 浏览器验证及本地代码审查，创建 PR 和最新 PR CI 待完成。
 
 ## 1. 前置进度与当前起点
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | 当前分支 | `feat/contract-fastapi` |
 | 开发基线 | `e8e5461`，已核对与 origin/main 一致 |
-| 当前阶段 | 合同查询路由与正式 HTTP 测试完成，本地检查通过 |
+| 当前阶段 | 本地检查与真实服务的 Swagger 浏览器验证完成 |
 | FastAPI API 包 | 已有 create_app()、模块级 app、/health 和 /contracts/{contract_id} |
 | 根目录 main.py | 仍为初始化示例 |
 | 已声明的相关依赖 | FastAPI、HTTPX、Pydantic Settings、Uvicorn |
@@ -34,9 +34,46 @@ tests/test_contract_api.py 现已包含正式 API 测试，使用函数级 repos
 
 ContractRead 已在 schemas.py 中定义七个字段，并配置 from_attributes=True。临时检查已确认可通过 model_validate(contract) 从领域对象读取字段；Python 模型中金额、日期保留 Decimal 和 date 类型，model_dump(mode="json") 与 model_dump_json() 均输出完整约定字段，金额为 "50000.00"，日期为 ISO 字符串。响应模型文件的 Ruff 静态和格式检查通过。
 
-合同查询路由已接入 ContractRead，通过 Depends(get_contract_service) 获取当前应用保存的 Service，再调用 service.get_contract()。此前临时 TestClient 检查已验证：存在的 ID 返回 200 和完整约定 JSON，不存在的正整数 ID 返回 404 及 {"detail": "合同不存在"}，0、负数和非数字 ID 返回 422 且没有调用 Service 查询方法；OpenAPI 包含路径正整数约束和 ContractRead 响应结构。本步将核心 HTTP 行为保存为正式测试，尚未启动真实 HTTP 服务器。
+合同查询路由已接入 ContractRead，通过 Depends(get_contract_service) 获取当前应用保存的 Service，再调用 service.get_contract()。此前临时 TestClient 检查已验证：存在的 ID 返回 200 和完整约定 JSON，不存在的正整数 ID 返回 404 及 {"detail": "合同不存在"}，0、负数和非数字 ID 返回 422 且没有调用 Service 查询方法；OpenAPI 包含路径正整数约束和 ContractRead 响应结构。核心 HTTP 行为已保存为正式测试，实际启动记录见下文。
 
 最新本地验证结果：API 专项测试 6 passed；全量测试 76 passed；ruff check . 通过，ruff format --check . 确认 24 个 Python 文件格式正确。测试有 1 条 Starlette 对 HTTPX TestClient 的弃用提示，不影响通过，本步未调整依赖。
+
+### 2026-10-27 实际启动与浏览器验证
+
+确认 8000 端口没有其他服务后，使用现有虚拟环境启动 Uvicorn，仅监听本机：
+
+```bash
+.venv/bin/python -m uvicorn agentprobe.api.main:app --host 127.0.0.1 --port 8000
+```
+
+在浏览器打开 [Swagger 文档](http://127.0.0.1:8000/docs)，通过 Try it out 和 Execute 实际发送请求，结果如下：
+
+| 验证项 | 实际结果 |
+| --- | --- |
+| Swagger 页面 | 正常加载，显示 /health、/contracts/{contract_id} 及 ContractRead 的七个响应字段 |
+| GET /health | 200，返回 {"status": "ok"} |
+| GET /contracts/1001 | 404，返回 {"detail": "合同不存在"} |
+| GET /contracts/0 | 422，错误类型 greater_than，位置为 path / contract_id |
+
+默认应用使用空仓储，没有添加演示合同，因此查询 1001 返回 404 符合预期。存在合同时的 200 和完整 JSON 已由注入测试仓储的正式测试验证，本次未向默认仓储加入演示数据。Swagger 中的 Example Value 是结构示例，不代表仓储已有合同。
+
+本次仅更新验证记录，没有修改业务代码，也未重复运行此前已通过的 76 条测试。启动的开发服务供本机继续查看文档；若自行在终端启动，可用 Ctrl+C 停止。
+
+### 2026-10-27 Issue 验收核对与本地代码审查
+
+已读取 Issue #11 的实际要求，并在 git fetch 后核对 main 基线为 e8e5461、功能分支及远端同为 c5a14eb。审查范围为本次新增的 API 入口、响应模型和 HTTP 测试，包含仓储注入、依赖提供、路径校验、404 处理和 JSON 序列化。
+
+审查结论：未发现阻碍提交 PR 的功能问题。五个核心 HTTP 场景和 ID 为 0 的加强场景均已保存为正式测试。业务代码、测试、依赖与此前验证时一致，因此沿用本阶段已执行的 76 passed 和 Ruff 通过记录，本次未重复运行测试。
+
+已将 Issue #11 中完成的核心测试、实现验收和 ID 为 0 的可选项勾选，并补充验收复核记录；Issue 仍为 open。以下三项可选加强未保存为正式测试，保持未勾选，不影响当前核心功能验收：
+
+- 同一应用连续查询时复用仓储。
+- 两个独立应用之间的数据隔离。
+- /docs 和 OpenAPI 的自动化检查。
+
+另一个可选文档改进是显式声明 404 响应描述，避免 Swagger 将实际 404 标记为 Undocumented；当前 404 的状态和 JSON 正确，不属于本 Issue 的必需修复项。
+
+当前功能分支尚无 PR。现有 CI 仅在 main Push 或针对 main 的 Pull Request 时触发，因此功能分支已推送不代表 PR CI 已完成。下一步提交本地验证与审查文档，创建关联 Issue #11 的 PR，再核对该 PR 最新提交的检查结果。
 
 ## 2. 今天的业务目标与分层
 
@@ -279,7 +316,7 @@ uv run ruff format --check .
 - [x] 新增 API 包和约定文件，并补全正式 HTTP 测试。
 - [x] create_app() 支持独立仓储注入，同一应用复用仓储，临时检查通过。
 - [x] /docs、/openapi.json 通过 TestClient 检查，健康检查已出现在文档定义中。
-- [ ] 实际启动 Uvicorn 并通过浏览器验证，补全合同路由后核对业务接口文档。
+- [x] 实际启动 Uvicorn，通过 Swagger 浏览器验证健康检查、404、422，并核对业务接口和响应字段文档。
 - [x] /health 返回 200 和约定 JSON，正式测试通过。
 - [x] 存在的合同返回 200 和完整正确的响应，正式测试通过。
 - [x] 不存在的合同返回 404，正式测试通过。
@@ -290,7 +327,8 @@ uv run ruff format --check .
 - [x] 六个 HTTP API 测试实例通过，数据独立。
 - [x] 原有 70 条测试保持通过，全量 76 条测试通过。
 - [x] Ruff 静态和格式检查通过。
-- [ ] PR 最新 GitHub Actions 检查通过，完成 Code Review。
+- [x] 本地代码审查完成，未发现阻碍提交 PR 的功能问题。
+- [ ] 创建 PR，并确认最新 GitHub Actions 检查通过。
 
 今天不实现客户合同列表、到期查询 API、数据库、鉴权、前端或 AI Agent。时间不足时优先完成应用启动、合同查询和 200/404 测试，未完成项如实记录。
 
