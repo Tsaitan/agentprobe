@@ -16,15 +16,15 @@
 | 已有接口 | 健康检查、单合同查询、客户合同列表、即将到期查询 |
 | 已有 Service 方法 | get_contract、list_customer_contracts、list_expiring_contracts |
 | 已有 HTTP 测试 | 28 个实例，其中本阶段新增 22 个 |
-| 最近确认的 PR CI | 提交 `8c8966a` 的 CI #11 成功，76 个测试通过 |
+| 最近确认的 PR CI | 本阶段提交 `603e4b1` 的 CI #13 成功，98 个测试通过 |
 | 本地所在分支 | codex/customer-contract-apis，已准备就绪 |
 | 分支基线 | 从已核对的 `6285514` 创建，后续功能改动在当前分支继续 |
-| 当前阶段 | 本地检查、真实服务验证和代码审查完成，待创建新 PR |
+| 当前阶段 | PR #14 已创建，CI 通过，等待用户审阅合并 |
 | 本阶段 Issue | #13，open，负责人 Tsaitan |
 
-链接：[已合并的 PR #12](https://github.com/Tsaitan/agentprobe/pull/12)、[已关闭的 Issue #11](https://github.com/Tsaitan/agentprobe/issues/11)、[上一阶段 PR CI](https://github.com/Tsaitan/agentprobe/actions/runs/40522219824)。
+链接：[本阶段 PR #14](https://github.com/Tsaitan/agentprobe/pull/14)、[本阶段首次验收 CI](https://github.com/Tsaitan/agentprobe/actions/runs/40719134936)、[已合并的 PR #12](https://github.com/Tsaitan/agentprobe/pull/12)、[已关闭的 Issue #11](https://github.com/Tsaitan/agentprobe/issues/11)。
 
-上一阶段基线为 76 条测试。本阶段新增 22 个正式 HTTP 测试实例，API 专项 28 passed，全量实际执行结果为 98 passed；本地 Ruff 静态与格式检查通过。真实服务 Swagger 验证和本地代码审查已完成，未发现阻碍提交 PR 的功能问题；新 PR CI 待完成，不重复创建旧 PR 或重开 Issue #11。
+上一阶段基线为 76 条测试。本阶段新增 22 个正式 HTTP 测试实例，API 专项 28 passed，全量实际执行结果为 98 passed；本地 Ruff 静态与格式检查通过。真实服务 Swagger 验证和本地代码审查已完成，未发现阻碍提交 PR 的功能问题；PR #14 已创建且 CI 通过，等待用户审阅合并，不重复创建旧 PR 或重开 Issue #11。
 
 ## 2. 今天要完成什么
 
@@ -64,7 +64,7 @@ git switch -c codex/customer-contract-apis
 
 上述命令供流程参考，当前分支已经存在且已切换到 codex/customer-contract-apis，本次复用它，没有重复创建或切换分支。准备阶段重新 git fetch 后确认 HEAD 与 main、origin/main 均为 6285514，本任务文档完整保留。后续接口实现进度见第 4 节。
 
-第一步、两个新接口、正式 HTTP 测试、真实服务验证和本地代码审查均已完成。Issue #13 已同步验收进度，下一步提交本文的审查记录，创建新 PR、验证最新 CI。
+第一步、两个新接口、正式 HTTP 测试、真实服务验证和本地代码审查均已完成。审查记录已通过 603e4b1 提交并推送，随后创建 PR #14、确认 CI 通过；合并操作留待用户审阅后执行。
 
 ## 4. 客户合同列表接口
 
@@ -277,9 +277,21 @@ Issue #13 的全部核心测试、实现与本地验收项，以及受控当天�
 - 两个默认应用之间的数据隔离。
 - /docs 与 OpenAPI 的自动化检查。
 
-功能分支当前尚无 PR。创建 PR 和最新 PR CI 验收保持待完成，Issue #13 保持 open，不提前关闭。现有 CI 在 main Push 或针对 main 的 Pull Request 时触发，功能分支已推送不能代替 PR CI。
+本地审查时功能分支尚无 PR，之后已创建 PR #14，首次 PR CI 验收通过。Issue #13 保持 open，不提前关闭。现有 CI 在 main Push 或针对 main 的 Pull Request 时触发，功能分支已推送不能代替 PR CI。
 
-提交本文的审查记录，创建新的 PR，目标分支为 main。描述使用 Closes #13 关联本阶段任务，不引用已关闭的 #11。等待该 PR 最新提交的 CI 通过，再进行审阅合并。
+### 2026-10-28 PR 与 GitHub Actions 验收
+
+已创建 [PR #14：新增客户合同列表与即将到期查询 API](https://github.com/Tsaitan/agentprobe/pull/14)，从 codex/customer-contract-apis 合入 main，描述使用 Closes #13 关联本阶段任务。PR 为 open，尚未合并；Issue #13 保持 open，待合并后自动关闭。
+
+首次已确认的 [CI #13](https://github.com/Tsaitan/agentprobe/actions/runs/40719134936) 对应提交 603e4b1。已读取实际作业步骤和日志：
+
+- Ubuntu 环境，Python 3.12.11，锁定依赖安装成功。
+- Pytest：98 passed，1 条已知 TestClient 弃用提示。
+- Ruff 静态检查：All checks passed。
+- Ruff 格式检查：25 files already formatted。
+- 检查作业及全部步骤均为 success。
+
+本文记录首次 PR CI 验收；此后的文档提交会再次触发 CI，最终以 PR 最新提交的检查结果为准。三个可选测试仍未补充，保持未勾选。用户审阅合并后，再确认 main Push 的 CI。
 
 ## 9. 今日验收清单
 
@@ -295,6 +307,7 @@ Issue #13 的全部核心测试、实现与本地验收项，以及受控当天�
 - [x] Ruff 静态与格式检查通过。
 - [x] Swagger 能展示新增接口、查询参数和列表响应，真实服务的正常与非法请求验证通过。
 - [x] 核对 Issue #13 并完成本地代码审查，未发现阻碍提交 PR 的功能问题。
-- [ ] 创建新 PR，关联正确 Issue，最新提交 CI 通过。
+- [x] 创建 PR #14，关联 Issue #13，GitHub Actions 检查通过。
+- [ ] 用户审阅并合并 PR，随后确认 main 分支 CI。
 
 本次不扩展数据库、写入接口、鉴权、前端、LLM 或 Agent。两个查询接口完成后，再将已有业务能力封装为 Agent 工具。
