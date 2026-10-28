@@ -19,12 +19,12 @@
 | 最近确认的 PR CI | 提交 `8c8966a` 的 CI #11 成功，76 个测试通过 |
 | 本地所在分支 | codex/customer-contract-apis，已准备就绪 |
 | 分支基线 | 从已核对的 `6285514` 创建，后续功能改动在当前分支继续 |
-| 工作区 | 两个新路由与正式测试已完成，本地全量检查通过 |
+| 当前阶段 | 两个新路由与正式测试已完成，本地检查与真实服务 Swagger 验证通过 |
 | 本阶段 Issue | #13，open，负责人 Tsaitan |
 
 链接：[已合并的 PR #12](https://github.com/Tsaitan/agentprobe/pull/12)、[已关闭的 Issue #11](https://github.com/Tsaitan/agentprobe/issues/11)、[上一阶段 PR CI](https://github.com/Tsaitan/agentprobe/actions/runs/40522219824)。
 
-上一阶段基线为 76 条测试。本阶段新增 22 个正式 HTTP 测试实例，API 专项 28 passed，全量实际执行结果为 98 passed；本地 Ruff 静态与格式检查通过。当前仍未进行新增接口的真实服务 Swagger 验证及新 PR CI，不重复创建旧 PR 或重开 Issue #11。
+上一阶段基线为 76 条测试。本阶段新增 22 个正式 HTTP 测试实例，API 专项 28 passed，全量实际执行结果为 98 passed；本地 Ruff 静态与格式检查通过。新增接口的真实服务 Swagger 验证现已完成，新 PR CI 待完成，不重复创建旧 PR 或重开 Issue #11。
 
 ## 2. 今天要完成什么
 
@@ -64,7 +64,7 @@ git switch -c codex/customer-contract-apis
 
 上述命令供流程参考，当前分支已经存在且已切换到 codex/customer-contract-apis，本次复用它，没有重复创建或切换分支。准备阶段重新 git fetch 后确认 HEAD 与 main、origin/main 均为 6285514，本任务文档完整保留。后续接口实现进度见第 4 节。
 
-第一步、两个新接口及正式 HTTP 测试均已完成，下一步进行新增接口的真实服务 Swagger 验证，再核对 Issue 验收和新 PR CI。
+第一步、两个新接口、正式 HTTP 测试及真实服务 Swagger 验证均已完成，下一步核对 Issue 验收并进行代码审查，再创建新 PR、验证最新 CI。
 
 ## 4. 客户合同列表接口
 
@@ -142,7 +142,7 @@ days 为负数或无法解析成整数、customer_id 非法、on_date 为明显�
 - 非法 customer_id、days、on_date 返回 422，且未调用 Service 的业务查询方法。
 - OpenAPI 包含新增路由、days 默认值 30 与最小值 0。
 
-到期查询的核心场景现已保存为正式测试，另补充了省略 on_date 的受控日期用例。API 专项 28 passed，全量 98 passed；已知 TestClient 弃用提示仍存在，未调整依赖。新增接口的真实服务 Swagger 浏览器验证待完成。
+到期查询的核心场景现已保存为正式测试，另补充了省略 on_date 的受控日期用例。API 专项 28 passed，全量 98 passed；已知 TestClient 弃用提示仍存在，未调整依赖。新增接口的真实服务 Swagger 验证已完成，结果见第 8 节。
 
 ## 6. 核心 HTTP 测试清单
 
@@ -238,6 +238,31 @@ uv run uvicorn agentprobe.api.main:app --reload
 
 通过 [Swagger 文档](http://127.0.0.1:8000/docs) 查看并执行新接口。默认仓储为空时，两个列表接口返回 [] 是正常结果；成功的非空列表由注入测试数据的自动化测试验证，不强行向默认应用加入演示合同。
 
+### 2026-10-28 真实服务与 Swagger 验证记录
+
+确认 8000 端口没有其他服务后，使用现有虚拟环境启动 Uvicorn，仅监听本机，并启用代码重载：
+
+```bash
+.venv/bin/python -m uvicorn agentprobe.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+浏览器已实际打开 Swagger，页面包含四个现有接口及 ContractRead 响应模型。两个新接口均展示合同数组响应；到期查询展示必填 customer_id、days 默认值 30 与最小值 0，以及可选 on_date 日期参数。
+
+| 实际请求或验证项 | 结果与验证方式 |
+| --- | --- |
+| GET /customers/101/contracts | Swagger 执行返回 200 和 [] |
+| GET /customers/0/contracts | Swagger 执行返回 422，位置为 path/customer_id |
+| GET /customers/101/contracts/expiring?days=30&on_date=2026-10-28 | Swagger 执行返回 200 和 [] |
+| 到期查询省略 days、on_date | 直接 HTTP 请求返回 200 和 [] |
+| 到期查询 days=-1 | 直接 HTTP 请求返回 422，位置为 query/days |
+| 到期查询 on_date=invalid | 直接 HTTP 请求返回 422，位置为 query/on_date |
+| 到期查询 customer_id=0 | 直接 HTTP 请求返回 422，位置为 path/customer_id |
+| /openapi.json | 真实 HTTP 返回成功，确认两个新路由的响应为 ContractRead 数组，days 默认值和范围正确，on_date 非必填 |
+
+Swagger 会在页面上先拦截负数 days，并提示最小值要求；因此另行直接请求 HTTP 接口，确认服务端本身也执行 422 校验。页面展示的 Server response 与结构示例分别核对，未把 Example Value 当作真实返回数据。
+
+默认仓储为空，因此正常查询返回 [] 符合设计；非空列表、日期边界及状态过滤由此前正式 API 测试验证。本步没有向默认应用添加演示数据，没有修改业务代码或测试，也没有重复运行已通过的 98 条测试。开发服务保持运行，供本机继续查看文档。
+
 提交相关代码、测试和本文，创建新的 PR，目标分支为 main。描述使用 Closes #13 关联本阶段任务，不引用已关闭的 #11。等待该 PR 最新提交的 CI 通过，再进行审阅合并。
 
 ## 9. 今日验收清单
@@ -252,7 +277,7 @@ uv run uvicorn agentprobe.api.main:app --reload
 - [x] 固定日期验证到期边界、自定义窗口和默认窗口。
 - [x] 原有测试与新增测试全部通过，实际全量 98 passed。
 - [x] Ruff 静态与格式检查通过。
-- [ ] Swagger 能展示新增接口、查询参数和列表响应。
+- [x] Swagger 能展示新增接口、查询参数和列表响应，真实服务的正常与非法请求验证通过。
 - [ ] 创建新 PR，关联正确 Issue，最新提交 CI 通过。
 
 本次不扩展数据库、写入接口、鉴权、前端、LLM 或 Agent。两个查询接口完成后，再将已有业务能力封装为 Agent 工具。
