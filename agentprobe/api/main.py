@@ -1,8 +1,9 @@
 """FastAPI 应用入口与服务装配。"""
 
+from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, Request
 
 from agentprobe.api.schemas import ContractRead
 from agentprobe.repositories.memory_contract_repository import (
@@ -41,6 +42,30 @@ def create_app(repository: ContractRepository | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="合同不存在")
 
         return ContractRead.model_validate(contract)
+
+    @app.get("/customers/{customer_id}/contracts", response_model=list[ContractRead])
+    def list_customer_contracts(
+        customer_id: Annotated[int, Path(gt=0)],
+        service: Annotated[ContractService, Depends(get_contract_service)],
+    ) -> list[ContractRead]:
+        """返回指定客户的全部合同，没有匹配合同时返回空列表。"""
+        contracts = service.list_customer_contracts(customer_id)
+        return [ContractRead.model_validate(contract) for contract in contracts]
+
+    @app.get(
+        "/customers/{customer_id}/contracts/expiring", response_model=list[ContractRead]
+    )
+    def list_expiring_contracts(
+        customer_id: Annotated[int, Path(gt=0)],
+        service: Annotated[ContractService, Depends(get_contract_service)],
+        days: Annotated[int, Query(ge=0)] = 30,
+        on_date: Annotated[date | None, Query()] = None,
+    ) -> list[ContractRead]:
+        """返回客户在指定日期即将到期的合同，无匹配结果时返回空列表。"""
+        contracts = service.list_expiring_contracts(
+            customer_id=customer_id, days=days, on_date=on_date
+        )
+        return [ContractRead.model_validate(contract) for contract in contracts]
 
     return app
 
