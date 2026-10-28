@@ -13,18 +13,18 @@
 | PR #12：合同查询 HTTP API | 已合并，北京时间 10 月 27 日 23:38 |
 | Issue #11 | 已关闭 |
 | origin/main 最新提交 | `6285514`，已通过 git fetch 核对 |
-| 已有接口 | GET /health、GET /contracts/{contract_id}、GET /customers/{customer_id}/contracts |
+| 已有接口 | 健康检查、单合同查询、客户合同列表、即将到期查询 |
 | 已有 Service 方法 | get_contract、list_customer_contracts、list_expiring_contracts |
 | 已有 HTTP 测试 | 6 个实例 |
 | 最近确认的 PR CI | 提交 `8c8966a` 的 CI #11 成功，76 个测试通过 |
 | 本地所在分支 | codex/customer-contract-apis，已准备就绪 |
 | 分支基线 | HEAD、main、origin/main 均为 `6285514`，已重新 fetch 核对 |
-| 工作区 | 保留本任务文档，API 入口已新增客户合同列表路由 |
+| 工作区 | API 入口已实现两个新路由，正式新增测试待补 |
 | 本阶段 Issue | #13，open，负责人 Tsaitan |
 
 链接：[已合并的 PR #12](https://github.com/Tsaitan/agentprobe/pull/12)、[已关闭的 Issue #11](https://github.com/Tsaitan/agentprobe/issues/11)、[上一阶段 PR CI](https://github.com/Tsaitan/agentprobe/actions/runs/40522219824)。
 
-76 passed 来自已确认的上一阶段执行结果；本阶段已新增客户合同列表接口，重新运行的原有 HTTP 测试为 6 passed，未重新执行全量 76 条。即将到期查询接口和新增正式测试待完成；本次未核验合并后 main Push 的 CI，不重复创建旧 PR 或重开 Issue #11。
+76 passed 来自已确认的上一阶段执行结果；本阶段已实现客户合同列表与即将到期查询接口，最新重新运行的原有 HTTP 测试为 6 passed，未重新执行全量 76 条。新增场景已经过临时 TestClient 检查，正式测试待补；本次未核验合并后 main Push 的 CI，不重复创建旧 PR 或重开 Issue #11。
 
 ## 2. 今天要完成什么
 
@@ -64,7 +64,7 @@ git switch -c codex/customer-contract-apis
 
 上述命令供流程参考，当前分支已经存在且已切换到 codex/customer-contract-apis，本次复用它，没有重复创建或切换分支。准备阶段重新 git fetch 后确认 HEAD 与 main、origin/main 均为 6285514，本任务文档完整保留。后续接口实现进度见第 4 节。
 
-第一步已经完成，客户合同列表接口也已实现，下一步从第 5 节的即将到期查询接口开始。
+第一步及两个新接口均已完成，下一步从第 6 节的正式 HTTP 测试开始。
 
 ## 4. 客户合同列表接口
 
@@ -88,7 +88,7 @@ git switch -c codex/customer-contract-apis
 
 当前实现与验证：已在 API main.py 中新增上述路由，通过 Depends 获取 Service，调用 list_customer_contracts()，再逐个转换为 ContractRead。临时 TestClient 检查已验证：客户 101 的两份合同正常返回，其他客户的数据被排除；已取消且日期已过期的合同仍保留；完整 JSON 中金额、日期序列化正确；无匹配客户返回 200 和 []；0、-1、abc 返回 422 且未调用 Service 查询方法。OpenAPI 中响应定义为 ContractRead 数组。
 
-本步重新运行原有 HTTP 测试，结果为 6 passed；API 入口 Ruff 静态、格式检查通过。仍有一条已知 TestClient 弃用提示，未调整依赖。上述新增场景目前只经过临时检查，尚未写入正式测试文件，也未实现到期查询路由。
+列表接口实现后重新运行原有 HTTP 测试，结果为 6 passed；API 入口 Ruff 静态、格式检查通过。仍有一条已知 TestClient 弃用提示，未调整依赖。上述新增场景目前只经过临时检查，尚未写入正式测试文件。到期查询接口的后续实现与验证见第 5 节。
 
 ## 5. 即将到期合同查询接口
 
@@ -132,6 +132,17 @@ service.list_expiring_contracts(
 不传 on_date 时，将 None 交给 Service，由现有逻辑使用当天。HTTP 查询字符串中的 on_date=null 或 on_date=None 并不表示 Python 的 None；调用方应省略该参数。
 
 days 为负数或无法解析成整数、customer_id 非法、on_date 为明显非法日期时，由 FastAPI 返回 422。Service 中原有 days < 0 抛 ValueError 的规则保留，路由不需要通过广泛捕获 ValueError 来代替参数校验。
+
+当前实现与验证：已在 API main.py 中导入 date、Query，新增到期查询路由，通过 Depends 获取 Service 并传递三个参数，转换为 ContractRead 列表。临时 TestClient 检查通过：
+
+- 混合数据只返回目标客户有效且处于窗口内的合同，排除其他客户、cancelled、pending、expired、已过期和未开始的合同。
+- 默认 days=30 正确区分剩余 0、30 和 31 天；自定义 days=1 和 days=0 的结果正确。
+- 完整 JSON 中金额为十进制字符串，日期为 ISO 字符串；无匹配客户返回 200 和 []。
+- 省略 on_date 时，Service 收到 None；临时控制 Service 模块中的 today() 后，实际默认日期筛选正确。
+- 非法 customer_id、days、on_date 返回 422，且未调用 Service 的业务查询方法。
+- OpenAPI 包含新增路由、days 默认值 30 与最小值 0。
+
+本步原有 HTTP 测试为 6 passed，API 入口 Ruff 静态和格式检查通过；已知 TestClient 弃用提示仍存在，未调整依赖。新增场景尚未保存为正式测试，新增接口也未进行真实服务的 Swagger 浏览器验证。
 
 ## 6. 核心 HTTP 测试清单
 
@@ -220,9 +231,9 @@ uv run uvicorn agentprobe.api.main:app --reload
 - [x] 生成今日任务文档；明确引用可读范围与本地执行方案。
 - [x] 创建 Issue #13，复用已准备好的 codex/customer-contract-apis 分支，并核对最新 main 基线。
 - [x] 客户合同列表仅返回目标客户的全部合同，空结果返回 200 和 []，临时 TestClient 检查通过。
-- [ ] 即将到期接口复用 Service 和 Contract 规则，不在路由中重写筛选。
-- [ ] customer_id、days、on_date 的参数声明与 422 行为正确。
-- [ ] 两个接口均使用 list[ContractRead]，字段和序列化正确。
+- [x] 即将到期接口复用 Service 和 Contract 规则，不在路由中重写筛选。
+- [x] customer_id、days、on_date 的参数声明与 422 行为正确，临时检查通过。
+- [x] 两个接口均使用 list[ContractRead]，字段和序列化正确，临时检查通过。
 - [ ] 固定日期验证到期边界、自定义窗口和默认窗口。
 - [ ] 原有测试与新增测试全部通过，记录实际数量。
 - [ ] Ruff 静态与格式检查通过。
