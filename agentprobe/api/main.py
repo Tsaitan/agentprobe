@@ -42,6 +42,15 @@ def create_app(repository: ContractRepository | None = None) -> FastAPI:
 
         return ContractRead.model_validate(contract)
 
+    @app.get("/customers/{customer_id}/contracts", response_model=list[ContractRead])
+    def list_customer_contracts(
+        customer_id: Annotated[int, Path(gt=0)],
+        service: Annotated[ContractService, Depends(get_contract_service)],
+    ) -> list[ContractRead]:
+        """返回指定客户的全部合同，没有匹配合同时返回空列表。"""
+        contracts = service.list_customer_contracts(customer_id)
+        return [ContractRead.model_validate(contract) for contract in contracts]
+
     return app
 
 
