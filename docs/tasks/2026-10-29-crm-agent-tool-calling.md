@@ -6,7 +6,7 @@
 
 来源：[AgentProbe AI Agent 全栈开发训练](chatgpt-conversation://6add5520-d9c4-83ec-9f1c-f16d1511fd8a)。引用对话目前能读取的完整日任务截至 10 月 26 日，之后包括当日条目仅返回引用占位。本文依据其“客户合同与到期 API → 第一个 CRM Agent → Tool Calling”路线，结合 10 月 29 日已核实的项目进度续排；这是本地执行方案，不是未能读取的当日正文转录。
 
-任务准备阶段已完成：创建 Issue #15，复用已准备好的功能分支，并核对本地已安装的 SDK 与锁文件。现已创建 AgentContext，本地工具适配、SDK 包装、Agent 工厂及真实模型调用待完成。
+任务准备阶段已完成：创建 Issue #15，复用已准备好的功能分支，并核对本地已安装的 SDK 与锁文件。现已创建 AgentContext 和普通合同查询适配函数，SDK 包装、Agent 工厂及真实模型调用待完成。
 
 ## 1. 当前起点
 
@@ -23,7 +23,7 @@
 | 现有依赖 | FastAPI、HTTPX、Pydantic Settings、Uvicorn，以及测试工具 |
 | Agents SDK | 已声明、锁定并安装 openai-agents 0.24.0 |
 | 本阶段 Issue | #15，open，负责人 Tsaitan |
-| Agent 代码 | 已有 agents 包和 AgentContext，工具、Agent 工厂及演示待补 |
+| Agent 代码 | 已有 AgentContext、query_expiring_contracts，SDK 包装、Agent 工厂及演示待补 |
 
 链接：[已合并的 PR #14](https://github.com/Tsaitan/agentprobe/pull/14)、[已关闭的 Issue #13](https://github.com/Tsaitan/agentprobe/issues/13)、[上一阶段 PR CI](https://github.com/Tsaitan/agentprobe/actions/runs/40719453151)。
 
@@ -68,7 +68,7 @@ uv add openai-agents
 
 安装包名为 openai-agents，Python 导入名为 agents，参见[官方安装与导入示例](https://developers.openai.com/api/docs/guides/agents/quickstart?lang=python)。本次只读核对结果：pyproject.toml 声明 openai-agents>=0.24.0，uv.lock 锁定 0.24.0，本地安装元数据也为 0.24.0；SDK 声明支持 Python>=3.10，当前环境为 3.12.11。提交时保留实际更新的依赖文件。
 
-依赖准备后，使用现有虚拟环境重新执行全量 Pytest，结果为 98 passed。准备阶段没有重复安装或重写用户已有依赖改动，也没有导入并运行 SDK Agent、读取密钥或调用模型。第 4 节的本地上下文现已实现，下一步编写第 5 节的普通工具适配函数。
+依赖准备后，使用现有虚拟环境重新执行全量 Pytest，结果为 98 passed。准备阶段没有重复安装或重写用户已有依赖改动，也没有导入并运行 SDK Agent、读取密钥或调用模型。第 4 节的本地上下文及第 5 节的普通工具适配已实现，下一步添加 SDK 函数工具包装。
 
 真实模型运行从环境读取 OPENAI_API_KEY 和 OPENAI_MODEL。模型名称按当前账号可用且支持工具调用的型号配置，不在普通测试中依赖默认线上模型。密钥只在本地配置，不写入代码、日志、任务文档或 Git。
 
@@ -137,10 +137,23 @@ HTTP 的 Path、Query 校验不会作用于直接调用的 Python 工具，因�
 - count 来自实际结果长度；金额使用十进制字符串，日期使用 ISO 字符串。
 - 无匹配结果为 ok=true、count=0、contracts=[]。
 - 非法参数返回明确的工具错误，例如 ok=false、error.code=invalid_arguments；不能将执行失败伪装成“没有合同”。
-- 普通适配函数可以抛 ValueError，由工具包装转换为参数错误；意外执行异常应保留失败语义，不使用笼统的 except Exception 返回空列表。
+- 普通适配函数的参数错误抛 InvalidToolArgumentsError（ValueError 子类），由工具包装识别并转换为参数错误；Service 执行异常应保留失败语义，不使用笼统的 except Exception 返回空列表。
 - 工具说明写明用途、参数含义、判断日期和空结果语义，让模型知道何时及如何调用。
 
 函数工具的作用是执行应用代码并把结果交回模型，参见[官方工具说明](https://developers.openai.com/api/docs/guides/tools#usage-in-the-agents-sdk)。工具的参数类型声明与领域规则分别验证，不假设装饰器会自动理解“必须为正数”等自然语言要求。
+
+### 当前普通适配函数的实现与检查
+
+已新增 agents/tools.py，提供 query_expiring_contracts(service, customer_id, days=30, on_date=None)。它是普通 Python 函数，暂未添加 SDK 装饰器，也不读取模型配置或密钥。
+
+- customer_id 和 days 校验运行时整数类型及取值范围，明确拒绝 bool；非法参数在 Service 调用前抛出 InvalidToolArgumentsError。
+- on_date 必须是有效 ISO 日期字符串或 None。None 时确定当天，字符串时解析为 date，并将同一个有效日期用于查询和返回元数据。
+- 调用现有 Service，输出 ok、客户、窗口、判断日期、实际 count 和合同列表；金额转字符串，结束日期转 ISO 字符串。
+- 无匹配结果仍是成功空结果。Service 的 RuntimeError、ValueError 等执行异常不被捕获或改成成功响应；后续包装层只将 InvalidToolArgumentsError 映射为 invalid_arguments，避免把 Service 的 ValueError 误判成输入错误。
+
+临时检查通过：实际仓储查询与完整结构化输出、JSON 序列化、空结果、参数透传、days=0、非法类型及日期不执行查询、受控当天日期、RuntimeError 和 ValueError 原异常传递。文件的 Ruff 静态与格式检查通过。
+
+上述场景尚未保存为正式测试，本步未重复运行原有 98 条测试。下一步在相同模块中添加 SDK 包装，从 AgentContext 取得 contract_service，调用普通适配函数并转换参数错误。
 
 ## 6. 创建 Agent 与演示入口
 
@@ -223,6 +236,7 @@ uv run ruff format --check .
 - [x] 依据可读取的路线和当前进度生成执行任务，注明原始正文限制。
 - [x] 创建 Issue #15，复用已准备的功能分支，核对 SDK 声明、锁定和安装版本，安装依赖后原有 98 条测试通过。
 - [x] 创建 AgentContext，显式保存 ContractService，临时检查依赖引用及 Ruff 通过。
+- [x] 实现普通 query_expiring_contracts 参数适配与结构化输出，临时检查和 Ruff 通过。
 - [ ] 合同查询工具通过本地上下文取得 Service，参数与返回格式明确。
 - [ ] 成功、空结果、参数错误、执行失败均有正确行为。
 - [ ] Agent 注册工具，具备依据工具结果回答的指令。
