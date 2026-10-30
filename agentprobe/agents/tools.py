@@ -1,7 +1,13 @@
-"""合同查询的参数适配与结构化输出。"""
+"""合同查询的参数适配、结构化输出与 SDK 工具包装。"""
 
+import json
 from datetime import date
 
+from agents import RunContextWrapper, function_tool
+from agents.exceptions import ModelBehaviorError
+from pydantic import StrictInt
+
+from agentprobe.agents.context import AgentContext
 from agentprobe.services.contract_service import ContractService
 
 
@@ -62,3 +68,45 @@ def query_expiring_contracts(
         "count": len(items),
         "contracts": items,
     }
+
+
+def _format_tool_error(
+    context: RunContextWrapper[AgentContext], error: Exception
+) -> str:
+    """将 SDK 输入解析错误和业务参数错误转为 JSON，其他异常继续抛出。"""
+    if isinstance(error, InvalidToolArgumentsError):
+        message = str(error)
+    elif isinstance(error, ModelBehaviorError):
+        message = "工具参数格式不正确，请按定义提供 customer_id、days 和 on_date"
+    else:
+        raise error
+
+    return json.dumps(
+        {"ok": False, "error": {"code": "invalid_arguments", "message": message}},
+        ensure_ascii=False,
+    )
+
+
+@function_tool(failure_error_function=_format_tool_error)
+def list_expiring_contracts(
+    context: RunContextWrapper[AgentContext],
+    customer_id: StrictInt,
+    days: StrictInt = 30,
+    on_date: str | None = None,
+) -> str:
+    """查询客户在指定日期有效、且在给定窗口内到期的合同，返回 JSON。
+
+    Args:
+        customer_id: 客户 ID，必须为正整数。
+        days: 到期窗口天数，必须为非负整数；0 表示只查当天到期。
+        on_date: ISO 判断日期字符串，None 表示服务端当天。
+
+    无匹配结果时返回成功空列表；参数错误时返回 invalid_arguments。
+    """
+    result = query_expiring_contracts(
+        service=context.context.contract_service,
+        customer_id=customer_id,
+        days=days,
+        on_date=on_date,
+    )
+    return json.dumps(result, ensure_ascii=False)
